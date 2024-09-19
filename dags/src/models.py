@@ -1,4 +1,4 @@
-from typing import Type
+from typing import Any, Type
 
 from sqlalchemy import (
     TIME,
@@ -11,11 +11,10 @@ from sqlalchemy import (
     Sequence,
     String,
 )
-from sqlalchemy.ext.declarative import DeclarativeBase, declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
 
-Base: Type[DeclarativeBase] = declarative_base()
+Base: Type[Any] = declarative_base()
 
 
 class City(Base):

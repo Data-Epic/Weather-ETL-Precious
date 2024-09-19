@@ -36,7 +36,7 @@ def test_fetch_weather_data_failure():
     city = "InvalidCity"
     result = fetch_weather_data(city, API_KEY)
 
-    assert result is None
+    assert result == {}
 
 
 def test_fetch_multiple_weather_data():
