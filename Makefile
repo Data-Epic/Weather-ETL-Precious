@@ -17,6 +17,8 @@ help:
 	@echo "  make stop          - Stop Airflow webserver and scheduler"
 	@echo "  make test          - Run tests"
 	@echo "  make run_pre-commit- Run pre-commit checks"
+	@echo "	 make clean			- Clear temp and test directories"
+	@echo "  make all_checks	- Run all checks and clean up"
 
 .PHONY: run_pre-commit
 run_pre-commit:
@@ -76,3 +78,6 @@ clean:
 	rm -rf .ruff_cache
 	rm -rf .pytest_cache
 	rm -rf .mypy_cache
+
+.PHONY: all_checks
+all_checks: run_pre-commit setup test clean
