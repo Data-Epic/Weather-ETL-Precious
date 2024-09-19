@@ -8,22 +8,24 @@ from dotenv import load_dotenv
 
 from typing import Optional
 
-from dags.src.logger_config import info_logger, error_logger
-from dags.src.processing import (
+from .logger_config import info_logger, error_logger
+from .processing import (
     load_to_df,
     transform_data,
     create_city_df,
     create_full_record_df,
     create_current_weather_df,
 )
-from dags.src.models import City, CurrentWeather, FullRecord
+from .models import City, CurrentWeather, FullRecord
+
+load_dotenv()
 
 
 def get_env() -> tuple[str, str]:
-    load_dotenv()
-
+    """Get weather api key and database url environment variables"""
     api_key = os.getenv("API_KEY")
     db_url = os.getenv("DB_URL")
+
     if not api_key or not db_url:
         error_logger.error(
             "API_KEY or DB_URL not found. Make sure they're defined in the .env file"
@@ -174,7 +176,6 @@ def add_current_weather(
         current_weather_records = current_weather_df.to_dict(orient="records")
         for record in current_weather_records:
             city_id = record["city_id"]
-
             existing_record = (
                 session.query(CurrentWeather).filter_by(city_id=city_id).first()
             )

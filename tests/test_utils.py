@@ -8,6 +8,7 @@ from dags.src.utils import (
     get_city_id,
     add_current_weather,
     add_full_records,
+    get_env,
 )
 
 from dags.src.database import get_db_conn
@@ -85,7 +86,7 @@ def test_add_cities(weather_response, test_db):
     assert isinstance(result["London"], int)
     assert isinstance(result["Lagos"], int)
 
-    for city_name, city_id in result.items():
+    for _, city_id in result.items():
         record = test_db.query(City).filter_by(id=city_id).first()
         assert record is not None
         assert record.id == city_id
@@ -110,7 +111,7 @@ def test_add_full_records(test_db, weather_response):
 
     add_full_records(test_db, full_record_df, city_cache)
 
-    for city_name, city_id in city_cache.items():
+    for _, city_id in city_cache.items():
         record = test_db.query(FullRecord).filter_by(city_id=city_id).first()
         assert record is not None
         assert record.city_id == city_id
@@ -123,7 +124,24 @@ def test_add_current_weather(test_db, weather_response):
 
     add_current_weather(test_db, current_weather_df, city_cache)
 
-    for city_name, city_id in city_cache.items():
+    for _, city_id in city_cache.items():
         record = test_db.query(CurrentWeather).filter_by(city_id=city_id).first()
         assert record is not None
         assert record.city_id == city_id
+
+
+def test_get_env(monkeypatch):
+    # Set the environment variables using monkeypatch
+    monkeypatch.setenv("API_KEY", "test_api_key")
+    monkeypatch.setenv("DB_URL", "sqlite:///:memory:")
+
+    # Test for when API_KEY and DB_URL exist
+    api_key, db_url = get_env()
+    assert api_key == "test_api_key"
+    assert db_url == "sqlite:///:memory:"
+
+    # Test for when API_KEY and DB_URL do not exist
+    monkeypatch.delenv("API_KEY", raising=False)
+    monkeypatch.delenv("DB_URL", raising=False)
+    with pytest.raises(ValueError, match="API Key or Database URL not found"):
+        get_env()
