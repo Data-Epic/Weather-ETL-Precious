@@ -73,7 +73,6 @@ stop:
 .PHONY: clean
 clean:
 	@echo "Cleaning environment"
-	@airflow db reset -y
 	rm -rf $(AIRFLOW_HOME)
 	rm -rf .ruff_cache
 	rm -rf .pytest_cache
