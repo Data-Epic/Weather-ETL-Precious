@@ -3,6 +3,8 @@ import time
 import json
 import pandas as pd
 from sqlalchemy.orm import Session
+import os
+from dotenv import load_dotenv
 
 from typing import Optional
 
@@ -15,6 +17,20 @@ from dags.src.processing import (
     create_current_weather_df,
 )
 from dags.src.models import City, CurrentWeather, FullRecord
+
+
+def get_env() -> tuple[str, str]:
+    load_dotenv()
+
+    api_key = os.getenv("API_KEY")
+    db_url = os.getenv("DB_URL")
+    if not api_key or not db_url:
+        error_logger.error(
+            "API_KEY or DB_URL not found. Make sure they're defined in the .env file"
+        )
+        raise ValueError("API Key or Database URL not found")
+    else:
+        return api_key, db_url
 
 
 def fetch_weather_data(city: str, api_key: str) -> dict:
