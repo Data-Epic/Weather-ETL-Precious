@@ -36,8 +36,8 @@ setup:
 	@mkdir -p $(AIRFLOW_HOME)/logs
 	@airflow db init
 	@airflow users create \
-		--username admin \
-		--password admin \
+		--username airflow \
+		--password airflow \
 		--firstname First \
 		--lastname Last \
 		--role Admin \
