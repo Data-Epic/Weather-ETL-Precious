@@ -3,3 +3,4 @@ pandas==2.2.2
 psycopg2-binary
 pre-commit==3.8.0
 pyarrow
+pytest
