@@ -15,7 +15,6 @@ jobs:
     env:
       AIRFLOW_HOME: ${{ github.workspace }}/airflow_home
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
-      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "True"
       AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/dags
       DB_URL: "sqlite:///:memory:"
       API_KEY: ${{ secrets.TEST_API_KEY }}
@@ -35,29 +34,21 @@ jobs:
         pip install --upgrade pip
         pip install -r requirements.txt
         pip install apache-airflow
-
-    - name: Set up Airflow
-      run: |
-        mkdir -p $AIRFLOW_HOME/logs
-        airflow db init
-        airflow users create \
-          --username admin \
-          --password admin \
-          --firstname First \
-          --lastname Last \
-          --role Admin \
-          --email admin@example.com
-
+        
     - name: Run pre-commit checks
       run: |
         pre-commit install
         pre-commit run --all-files -v
 
-    - name: Run Airflow tests
-      run: |
-        airflow dags list
-        airflow dags test weather_etl_dag_hourly
-
     - name: Run unit tests
       run: |
         pytest -s
+
+    - name: Run Airflow tests
+      run: |
+        mkdir -p $AIRFLOW_HOME/logs
+        airflow db init
+        airflow dags list
+        airflow dags test weather_etl_dag_hourly
+
+
