@@ -15,7 +15,7 @@ api_key, db_url = get_env()
 
 
 def extract_weather_data(cities: list[str], api_key: str = api_key) -> dict:
-    """Task to extract weather data from API"""
+    """Extract weather data for a list of cities from API"""
     try:
         response = fetch_multiple_weather_data(cities, api_key)
         if not response:
