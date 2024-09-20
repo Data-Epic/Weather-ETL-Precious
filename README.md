@@ -92,8 +92,7 @@ docker compose up --build
 
 This will initialize the following services:
 - **Airflow Webserver** accessible at [http://localhost:8080](http://localhost:8080). Log in with the default credentials (`airflow`/`airflow`).
-- **PostgreSQL** accessible on port `5432`
-- **pgAdmin** accessible on port [http://localhost:5050](http://localhost:5050)
+- **Weather PostgreSQL Database server** accessible on port `5432`
 
 **Airflow web UI**
 ![Airflow Web UI](images/Airflow_web.png)
