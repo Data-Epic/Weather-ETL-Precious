@@ -8,9 +8,8 @@ The goal of this project is to automate the hourly fetching from API and loading
 
 - **Dockerized Airflow and PostgreSQL**: The project uses Docker and Docker Compose to manage both Airflow and PostgreSQL services.
 - **API Data Extraction**: Weather data is fetched using the OpenWeatherMap API.
-- **PostgreSQL Data Storage**: The data is stored in a PostgreSQL database with a predefined schema.
+- **PostgreSQL Data Storage**: The data is stored in a PostgreSQL database.
 - **Automated ETL Workflow**: Airflow manages the ETL process, scheduled to run hourly, ensuring that the weather data is updated regularly.
-- **Database management with pgAdmin**: pgAdmin is used to manage the PostgreSQL database.
 - **Monitoring and Logging**: Airflow's built-in features for monitoring and logging are utilized to track the pipeline workflow.
 - **Testing and Dev Support**: The project includes a Makefile with commands to test the entire piple workflow and setup a development environment.
 
@@ -73,8 +72,6 @@ DB_USER=myadmin # set your own
 DB_PASSWORD=mypassword # add your password
 DB_NAME=weather_etl
 DB_URL=postgresql+psycopg2://${DB_USER}:${DB_PASSWORD}@weather-db/${DB_NAME}
-
-AIRFLOW__CORE__LOAD_EXAMPLES=False
 ```
 
 #### 3. Configure OpenWeatherMap API
@@ -97,6 +94,10 @@ This will initialize the following services:
 - **Airflow Webserver** accessible at [http://localhost:8080](http://localhost:8080). Log in with the default credentials (`airflow`/`airflow`).
 - **PostgreSQL** accessible on port `5432`
 - **pgAdmin** accessible on port [http://localhost:5050](http://localhost:5050)
+
+**Airflow web UI**
+![Airflow Web UI](images/Airflow_web.png)
+
 
 #### Shutting down services and Cleaning up
 To stop the services, run:
@@ -197,8 +198,10 @@ The following diagram represents the relationships between the tables in the dat
 
 The core logic of the ETL process is managed by an **Airflow DAG** created by `dags/weather_etl_dag.py`. The DAG is scheduled to run every hour, fetching weather data for multiple cities and inserting it into the PostgreSQL database.
 
+The DAG utilizes the `extract_weather_data`, `transform_weather_data`, and `load_weather_data` functions in the `dags/src/pipeline.py` script to perform the ETL process.
+
 ### DAG Workflow:
-1. Fetch current weather data from the OpenWeatherMap API.
+1. Fetch current Tweather data from the OpenWeatherMap API.
 2. Transform the data (e.g., convert temperature from Kelvin to Celsius).
 3. Load the data into the PostgreSQL database.
 
@@ -209,23 +212,61 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
 from airflow.models import TaskInstance
-import os
-import pandas as pd
+import sys
+
+from dags.src.pipeline import extract_weather_data, transform_weather_data, load_weather_data
+
 import logging
-
-from dags.src.utils import fetch_multiple_weather_data, process_weather_response, add_cities, add_current_weather, add_full_records, get_env
-from dags.src.database import get_db_conn
-
-# configure logger
 logger = logging.getLogger(__name__)
 
-api_key,  db_url = get_env()
+sys.path.append("/dags")
+
 cities = ["London", "Lagos", "Paris", "Dubai"]
+
+def extract_data(ti: TaskInstance) -> None:
+    """Task to extract weather data from API"""
+    try:
+        data = extract_weather_data(cities)
+        ti.xcom_push(key="weather_data", value=data)
+        logger.info("Data fetched from API")
+    except Exception as e:
+        logger.error(f"Error in extract_data: {e}")
+        raise
+
+def transform_data(ti: TaskInstance) -> None:
+    """Task to transform weather data"""
+    try:
+        raw_data = ti.xcom_pull(task_ids="extract_weather_data", key="weather_data")
+        if not raw_data:
+            logger.error("No data found for transformation.")
+            raise ValueError("No data to transform.")
+        transformed_data = transform_weather_data(raw_data)
+        ti.xcom_push(key="transformed_data", value=transformed_data)
+        logger.info("Data transformed successfully")
+    except Exception as e:
+        response = ti.xcom_pull(task_ids="extract_weather_data")
+        logger.error(f"Error in transform_data: {e}, Response: {response}")
+        raise
+
+def load_data(ti: TaskInstance) -> None:
+    """Task to load weather data into the destination"""
+    try:
+        transformed_data = ti.xcom_pull(task_ids="transform_weather_data", key="transformed_data")
+        if not transformed_data:
+            logger.error("No transformed data found for loading.")
+            raise ValueError("No data to load.")
+        load_weather_data(transformed_data)
+        logger.info("Data loaded successfully")
+    except Exception as e:
+        response = ti.xcom_pull(task_ids="transform_weather_data")
+        logger.error(f"Error in load_data: {e}, Response: {response}")
+        raise
+
 
 default_args = {
     "owner": "airflow",
     "depends_on_past": False,
-    "start_date": datetime(2024, 9, 18),
+    "start_date": datetime(2024, 9, 19),
     "email_on_failure": False,
     "email_on_retry": False,
     "retries": 1,
@@ -237,58 +278,56 @@ dag = DAG(
     default_args=default_args,
     description="Weather ETL DAG to fetch and load weather data, runs hourly",
     schedule=timedelta(hours=1),
+    catchup=False
 )
-
-def extract_weather_data() -> dict:
-    """Task to extract weather data from API"""
-    .
-    .
-
-def transform_weather_data(ti: TaskInstance) -> None:
-    """Transform weather_response dict"""
-    .
-    .
-
-def load_weather_data(ti: TaskInstance) -> None:
-    """Load weather dataframes into database"""
-    .
-    .
 
 extract_task = PythonOperator(
-    task_id="extract_weather_data",
-    python_callable=extract_weather_data,
-    dag=dag,
-)
+    task_id="extract_weather_data", python_callable=extract_data, dag=dag)
 
 transform_task = PythonOperator(
-    task_id="transform_weather_data",
-    python_callable=transform_weather_data,
-    dag=dag,
-)
+    task_id="transform_weather_data", python_callable=transform_data, dag=dag)
 
-load_task = PythonOperator(
-    task_id="load_weather_data",
-    python_callable=load_weather_data,
-    dag=dag,
-)
+load_task = PythonOperator(task_id="load_weather_data", python_callable=load_data, dag=dag)
 
 extract_task >> transform_task >> load_task
-
 ```
 
 
 ## Running the Project
 
-Once the Docker containers are running, access the Airflow web UI at:
-
-```
-http://localhost:8080
-```
+Once the Docker containers are running, access the Airflow web UI at: [http://localhost:8080](http://localhost:8080). If the containers are not running, run them in detached mode using `docker compose up -d`.
 
 Log in with the default credentials (`airflow`/`airflow`), and navigate to the DAGs section to trigger the `weather_etl_dag` manually or wait for it to run on schedule.
 
 **Airflow UI with Successful DAG Execution**:
   ![Airflow DAG Success](images/weather_etl_dag_hourly.png)
+
+### Querying the weather database
+To query the weather database created by the weather-db service:
+- Open a new terminal window and  run:
+ ```bash
+ docker exec -it weather-db bash
+ ```
+- Connect to weather database:
+```bash
+psql -U <your_user> -d <your_db_name>
+```
+- Run your queries
+```sql
+-- list all tables in database
+\dt
+
+-- list all rows in current_weather table
+SELECT * FROM current_weather;
+```
+-  Exit the psql shell:
+```
+\q
+exit
+```
+
+**Result for querying current_weather table**:
+  ![current_weather table](images/querying.png)
 
 
 ## Continuous Integration and Testing
@@ -304,14 +343,13 @@ The project also consists of a Makefile with commands for setting up a test envi
 **Makefile Commands**:
 ```
 make help           - Shows available commands
-make setup          - Setup test environment and initialize Airflow
-make webserver      - Start test Airflow webserver
-make scheduler      - Start Airflow scheduler"
-make stop           - Stop Airflow webserver and scheduler"
-make test           - Run tests"
-make run_pre-commit - Run pre-commit checks"
-make clean			- Clear temp and test directories"
-make all_checks	    - Run all checks and clean up"
+make setup          - Setup test environment and install depencies
+make pre-commit     - Run pre-commit checks for linting, formatting and type checking
+make airflow-test	  - Test Airflow DAG
+make pytest		      - Run unit tests
+make test           - Run unit tests and airflow tests
+make clean			    - Clear temp and test directories"
+make all-checks	    - Run all checks and clean up"
 ```
 ### Logging
 

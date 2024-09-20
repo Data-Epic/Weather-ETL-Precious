@@ -1,4 +1,5 @@
 export AIRFLOW_HOME:=$(shell pwd)/airflow_home
+export AIRFLOW__CORE__LOAD_EXAMPLES=False
 export AIRFLOW__CORE__DAGS_FOLDER:=$(shell pwd)/dags
 export DB_URL=sqlite:///:memory:
 export API_KEY=8d647a23b8b7f8fe77642f3a2e739566
@@ -42,6 +43,9 @@ airflow-test: setup
 	echo "Running Airflow tests"
 	airflow dags list
 	airflow dags test weather_etl_dag_hourly
+	@echo "Airflow tests passed"
+	rm -rf $(AIRFLOW_HOME)
+
 
 
 .PHONY: pytest
@@ -60,6 +64,8 @@ clean:
 	rm -rf .ruff_cache
 	rm -rf .pytest_cache
 	rm -rf .mypy_cache
+	rm -rf myenv
+
 
 .PHONY: all-checks
 all-checks: setup pre-commit test clean
