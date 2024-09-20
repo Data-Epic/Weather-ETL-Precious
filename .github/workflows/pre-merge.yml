@@ -34,7 +34,7 @@ jobs:
         pip install --upgrade pip
         pip install -r requirements.txt
         pip install apache-airflow
-        
+
     - name: Run pre-commit checks
       run: |
         pre-commit install
@@ -50,5 +50,3 @@ jobs:
         airflow db init
         airflow dags list
         airflow dags test weather_etl_dag_hourly
-
-
