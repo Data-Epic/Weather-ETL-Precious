@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import datetime
 import math
 
-from dags.src.logger_config import error_logger
+from .logger_config import error_logger
 
 
 def load_to_df(weather_data: dict) -> pd.DataFrame:

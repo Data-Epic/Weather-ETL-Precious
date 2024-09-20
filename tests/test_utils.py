@@ -1,5 +1,6 @@
 import pytest
 import pandas as pd
+import os
 from dags.src.utils import (
     fetch_weather_data,
     fetch_multiple_weather_data,
@@ -14,7 +15,7 @@ from dags.src.utils import (
 from dags.src.database import get_db_conn
 from dags.src.models import City, CurrentWeather, FullRecord
 
-API_KEY = "8d647a23b8b7f8fe77642f3a2e739566"
+API_KEY = os.getenv("API_KEY")
 
 
 @pytest.fixture(scope="module")
