@@ -47,6 +47,8 @@ jobs:
     - name: Run Airflow tests
       run: |
         mkdir -p $AIRFLOW_HOME/logs
+        airflow variables set CITIES "Dubai, London, Lagos"
+	      airflow variables get CITIES
         airflow db init
         airflow dags list
         airflow dags test weather_etl_dag_hourly
