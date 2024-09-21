@@ -314,10 +314,10 @@ The project also consists of a Makefile with commands for setting up a test envi
 make help           - Shows available commands
 make setup          - Setup test environment and install depencies
 make pre-commit     - Run pre-commit checks for linting, formatting and type checking
-make airflow-test	  - Test Airflow DAG
-make pytest		      - Run unit tests
+make airflow-test	- Test Airflow DAG
+make pytest		    - Run unit tests
 make test           - Run unit tests and airflow tests
-make clean			    - Clear temp and test directories"
+make clean			- Clear temp and test directories"
 make all-checks	    - Run all checks and clean up"
 ```
 ### Logging
