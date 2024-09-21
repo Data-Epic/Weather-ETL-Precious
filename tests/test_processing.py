@@ -10,6 +10,7 @@ from dags.src.processing import (
     create_current_weather_df,
 )
 import math
+from datetime import datetime
 
 
 @pytest.fixture
@@ -116,18 +117,22 @@ def test_create_city_df(valid_data):
     df = load_to_df(valid_data)
     transformed_df = transform_data(df)
     city_df = create_city_df(transformed_df)
+    assert "id" in city_df.columns
     assert "name" in city_df.columns
     assert "latitude" in city_df.columns
     assert "longitude" in city_df.columns
     assert "country" in city_df.columns
     assert "timezone_offset" in city_df.columns
     assert "timezone_utc" in city_df.columns
+    assert city_df["id"][0] == "NG-Nkpor"
 
 
 def test_create_full_record_df(valid_data):
     df = load_to_df(valid_data)
     transformed_df = transform_data(df)
     full_record_df = create_full_record_df(transformed_df)
+    assert "id" in full_record_df.columns
+    assert "city_name" in full_record_df.columns
     assert "description" in full_record_df.columns
     assert "temp_k" in full_record_df.columns
     assert "temp_c" in full_record_df.columns
@@ -147,11 +152,16 @@ def test_create_full_record_df(valid_data):
     assert "sunset" in full_record_df.columns
     assert "timezone_utc" in full_record_df.columns
 
+    datetime_str = datetime.now().strftime("%Y%m%d%H%M%S")
+    assert full_record_df["id"][0] == f"NG-Nkpor-{datetime_str}"
+
 
 def test_create_current_weather_df(valid_data):
     df = load_to_df(valid_data)
     transformed_df = transform_data(df)
     current_weather_df = create_current_weather_df(transformed_df)
+    assert "id" in current_weather_df.columns
+    assert "city_name" in current_weather_df.columns
     assert "description" in current_weather_df.columns
     assert "temp_k" in current_weather_df.columns
     assert "temp_c" in current_weather_df.columns
@@ -160,3 +170,6 @@ def test_create_current_weather_df(valid_data):
     assert "wind_speed" in current_weather_df.columns
     assert "rain_volume" in current_weather_df.columns
     assert "timezone_utc" in current_weather_df.columns
+
+    datetime_str = datetime.now().strftime("%Y%m%d%H%M%S")
+    assert current_weather_df["id"][0] == f"NG-Nkpor-{datetime_str}"

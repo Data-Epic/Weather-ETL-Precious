@@ -1,5 +1,7 @@
 import requests
 import time
+from ratelimit import limits, sleep_and_retry
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import pandas as pd
 from sqlalchemy.orm import Session
@@ -35,18 +37,20 @@ def get_env() -> tuple[str, str]:
         return api_key, db_url
 
 
+@sleep_and_retry
+@limits(calls=60, period=60)  # limits API calls to 60 per minute
 def fetch_weather_data(city: str, api_key: str) -> dict:
-    """Fetches weather data for a city"""
+    """Fetches weather data for a city."""
     base_url = "https://api.openweathermap.org/data/2.5/weather"
     data = {}
 
-    for _ in range(3):
+    for _ in range(2):  # Retry up to 2 times for failed requests
         try:
             response = requests.get(base_url, params={"q": city, "appid": api_key})
             if response.status_code == 200:
                 data = response.json()
                 info_logger.info(f"Raw weather data for {city}: {json.dumps(data)}")
-                break
+                return data
             else:
                 error_logger.error(
                     f"Failed to fetch data for {city}: {response.status_code}",
@@ -54,25 +58,29 @@ def fetch_weather_data(city: str, api_key: str) -> dict:
                 )
         except requests.exceptions.RequestException as e:
             error_logger.error(f"Error fetching data for {city}: {e}", exc_info=True)
-        time.sleep(2)
+        time.sleep(2)  # Wait 2 seconds before retrying
     return data
 
 
 def fetch_multiple_weather_data(cities: list[str], api_key: str) -> dict:
-    """
-    Fetches  weather data for multiple cities.
-    """
+    """Fetches weather data for multiple cities with rate limiting and concurrency."""
     weather_data = {}
-    try:
-        for city in cities:
-            data = fetch_weather_data(city, api_key)
-            if data:
-                weather_data[city] = data
-            time.sleep(1)
-    except Exception as e:
-        error_logger.error(
-            f"Error fetching weather data for {city}: {e}", exc_info=True
-        )
+
+    with ThreadPoolExecutor(max_workers=10) as executor:  # Up to 10 requests at once
+        future_to_city = {
+            executor.submit(fetch_weather_data, city, api_key): city for city in cities
+        }
+
+        for future in as_completed(future_to_city):
+            city = future_to_city[future]
+            try:
+                data = future.result()
+                if data:
+                    weather_data[city] = data
+            except Exception as e:
+                error_logger.error(
+                    f"Error fetching weather data for {city}: {e}", exc_info=True
+                )
     return weather_data
 
 
@@ -89,6 +97,10 @@ def process_weather_response(weather_data: dict) -> dict:
         city_df = create_city_df(transformed_df)
         full_record_df = create_full_record_df(transformed_df)
         current_weather_df = create_current_weather_df(transformed_df)
+
+        info_logger.info(f"city_df: {city_df}")
+        info_logger.info(f"full_record_df: {full_record_df}")
+        info_logger.info(f"current_weather_df: {current_weather_df}")
 
         return {
             "cities": city_df,
@@ -152,8 +164,7 @@ def add_full_records(
 ) -> None:
     """Add full weather records to db"""
     try:
-        full_record_df["city_id"] = full_record_df["name"].map(city_cache)
-        full_record_df.drop(columns=["name"], inplace=True)
+        full_record_df["city_id"] = full_record_df["city_name"].map(city_cache)
         full_record_records = full_record_df.to_dict(orient="records")
         session.bulk_insert_mappings(FullRecord, full_record_records)
         session.commit()
@@ -170,9 +181,7 @@ def add_current_weather(
 ) -> None:
     """Add or update current weather data in the db"""
     try:
-        current_weather_df["city_id"] = current_weather_df["name"].map(city_cache)
-        current_weather_df.drop(columns=["name"], inplace=True)
-
+        current_weather_df["city_id"] = current_weather_df["city_name"].map(city_cache)
         current_weather_records = current_weather_df.to_dict(orient="records")
         for record in current_weather_records:
             city_id = record["city_id"]
@@ -183,12 +192,12 @@ def add_current_weather(
                 # Update the existing record
                 for key, value in record.items():
                     setattr(existing_record, key, value)
-                info_logger.info(f"Updated weather record for city_id {city_id}")
+                info_logger.info(f"Updated weather record for {city_id}")
             else:
                 # Insert a new record
                 new_record = CurrentWeather(**record)
                 session.add(new_record)
-                info_logger.info(f"Inserted new weather record for city_id {city_id}")
+                info_logger.info(f"Inserted new weather record for {city_id}")
         session.commit()
         info_logger.info("Current weather data updated")
     except Exception as e:

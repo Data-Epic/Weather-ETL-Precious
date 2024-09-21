@@ -33,6 +33,7 @@ def create_tables(engine):
         info_logger.info("Database tables created successfully.")
     except SQLAlchemyError as e:
         error_logger.error(f"Error creating tables: {e}")
+        raise e
 
 
 def drop_tables(engine: Engine, tables: list[str]) -> None:

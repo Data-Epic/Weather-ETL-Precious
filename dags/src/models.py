@@ -8,7 +8,6 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
-    Sequence,
     String,
 )
 from sqlalchemy.orm import declarative_base, relationship
@@ -20,7 +19,7 @@ Base: Type[Any] = declarative_base()
 class City(Base):
     __tablename__ = "cities"
 
-    id = Column(Integer, Sequence("id"), primary_key=True)
+    id = Column(String(50), primary_key=True, unique=True, nullable=False)
     name = Column(String(20), nullable=False)
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
@@ -46,8 +45,9 @@ class City(Base):
 class FullRecord(Base):
     __tablename__ = "full_records"
 
-    id = Column(Integer, Sequence("id"), primary_key=True)
-    city_id = Column(Integer, ForeignKey("cities.id"), nullable=False)
+    id = Column(String(50), primary_key=True, unique=True, nullable=False)
+    city_id = Column(String, ForeignKey("cities.id"), nullable=False)
+    city_name = Column(String(20), nullable=False)
     city = relationship("City", back_populates="full_records")
     description = Column(String(100), nullable=False)
     temp_k = Column(Float, nullable=False)
@@ -71,7 +71,7 @@ class FullRecord(Base):
 
     def __repr__(self) -> str:
         return (
-            f"<FullRecord(id={self.id}, city_id={self.city_id}, city_name={self.city.name}, "
+            f"<FullRecord(id={self.id}, city_id={self.city_id}, city_name={self.city_name}, "
             f" temp_k={self.temp_k},temp_c={self.temp_c}, feels_like_k={self.feels_like_k}, "
             f"temp_min_k={self.temp_min_k}, temp_max_k={self.temp_max_k}, "
             f"pressure={self.pressure}, humidity={self.humidity}, sea_level={self.sea_level}, grnd_level={self.grnd_level}, "
@@ -84,8 +84,9 @@ class FullRecord(Base):
 class CurrentWeather(Base):
     __tablename__ = "current_weather"
 
-    id = Column(Integer, Sequence("id"), primary_key=True)
-    city_id = Column(Integer, ForeignKey("cities.id"), nullable=False)
+    id = Column(String(50), primary_key=True, unique=True, nullable=False)
+    city_id = Column(String, ForeignKey("cities.id"), nullable=False)
+    city_name = Column(String(20), nullable=False)
     city = relationship("City", back_populates="current_weather")
     description = Column(String(100), nullable=False)
     temp_k = Column(Float, nullable=False)
@@ -99,7 +100,7 @@ class CurrentWeather(Base):
 
     def __repr__(self) -> str:
         return (
-            f"<CurrentWeather(id={self.id}, city_id={self.city_id}, city_name={self.city.name}, "
+            f"<CurrentWeather(id={self.id}, city_id={self.city_id}, city_name={self.city_name}, "
             f"temp_k={self.temp_k}, temp_c={self.temp_c}, pressure={self.pressure}, humidity={self.humidity}, "
             f"wind_speed={self.wind_speed}, weather_description={self.description}, "
             f"recorded_at={self.recorded_at}, timezone_utc={self.timezone_utc})>"

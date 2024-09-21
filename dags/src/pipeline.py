@@ -35,7 +35,12 @@ def transform_weather_data(weather_response: dict) -> dict:
             error_logger.error("No data to process.")
             raise ValueError("No data to process.")
         processed_data = process_weather_response(weather_response)
-        info_logger.info("Weather data processed")
+
+        if processed_data == {}:
+            error_logger.error("Processed data is empty.")
+            raise ValueError("Processed data is empty.")
+
+        info_logger.info(f"Weather data processed: {processed_data}")
         return processed_data
     except Exception as e:
         error_logger.error(f"Error occured during transformation: {e}", exc_info=True)

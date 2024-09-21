@@ -84,8 +84,6 @@ def test_add_cities(weather_response, test_db):
     assert isinstance(result, dict)
     assert "London" in result
     assert "Lagos" in result
-    assert isinstance(result["London"], int)
-    assert isinstance(result["Lagos"], int)
 
     for _, city_id in result.items():
         record = test_db.query(City).filter_by(id=city_id).first()
@@ -94,11 +92,11 @@ def test_add_cities(weather_response, test_db):
 
 
 def test_get_city_id():
-    city_cache = {"London": 1, "Lagos": 2}
+    city_cache = {"London": "UK-London", "Lagos": "NG-Lagos"}
 
     city_name = "London"
     result = get_city_id(city_name, city_cache)
-    assert result == 1
+    assert result == "UK-London"
 
     city_name = "New York"
     result = get_city_id(city_name, city_cache)

@@ -20,6 +20,7 @@ def db_session():
 
 def test_city_insertion(db_session):
     city = City(
+        id="NG_Nkpor",
         name="Nkpor",
         latitude=6.1516,
         longitude=6.8446,
@@ -30,7 +31,7 @@ def test_city_insertion(db_session):
     db_session.add(city)
     db_session.commit()
 
-    retrieved_city = db_session.query(City).filter_by(id=1).first()
+    retrieved_city = db_session.query(City).filter_by(id="NG_Nkpor").first()
     assert retrieved_city is not None
     assert retrieved_city.name == "Nkpor"
     assert retrieved_city.latitude == 6.1516
@@ -40,6 +41,7 @@ def test_city_insertion(db_session):
 def test_weather_record_insertion(db_session):
     # First, insert a city to reference
     city = City(
+        id="NG_Nkpor",
         name="Nkpor",
         latitude=6.1516,
         longitude=6.8446,
@@ -51,7 +53,9 @@ def test_weather_record_insertion(db_session):
     db_session.commit()
 
     full_record = FullRecord(
+        id="NG_Nkpor_test",
         city_id=city.id,
+        city_name="Nkpor",
         description="moderate rain",
         temp_k=296.94,
         temp_c=23.79,
@@ -74,16 +78,19 @@ def test_weather_record_insertion(db_session):
     db_session.add(full_record)
     db_session.commit()
 
-    retrieved_record = db_session.query(FullRecord).filter_by(id=1).first()
-    assert retrieved_record is not None
-    assert retrieved_record.temp_c == 23.79
-    assert retrieved_record.description == "moderate rain"
-    assert retrieved_record.city_id == 1
+    retrieved_current_weather = (
+        db_session.query(FullRecord).filter_by(id="NG_Nkpor_test").first()
+    )
+    assert retrieved_current_weather is not None
+    assert retrieved_current_weather.temp_c == 23.79
+    assert retrieved_current_weather.description == "moderate rain"
+    assert retrieved_current_weather.city_id == "NG_Nkpor"
 
 
 def test_current_weather_insertion(db_session):
     # First, insert a city to reference
     city = City(
+        id="NG_Nkpor",
         name="Nkpor",
         latitude=6.1516,
         longitude=6.8446,
@@ -95,7 +102,9 @@ def test_current_weather_insertion(db_session):
     db_session.commit()
 
     current_weather = CurrentWeather(
+        id="NG_Nkpor_test",
         city_id=city.id,
+        city_name="Nkpor",
         description="moderate rain",
         temp_k=296.94,
         temp_c=23.79,
@@ -108,8 +117,10 @@ def test_current_weather_insertion(db_session):
     db_session.add(current_weather)
     db_session.commit()
 
-    retrieved_current_weather = db_session.query(CurrentWeather).filter_by(id=1).first()
+    retrieved_current_weather = (
+        db_session.query(CurrentWeather).filter_by(id="NG_Nkpor_test").first()
+    )
     assert retrieved_current_weather is not None
     assert retrieved_current_weather.temp_c == 23.79
     assert retrieved_current_weather.description == "moderate rain"
-    assert retrieved_current_weather.city_id == 1
+    assert retrieved_current_weather.city_id == "NG_Nkpor"

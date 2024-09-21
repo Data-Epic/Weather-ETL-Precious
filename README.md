@@ -91,14 +91,58 @@ docker compose up --build
 ```
 
 This will initialize the following services:
-- **Airflow Webserver** accessible at [http://localhost:8080](http://localhost:8080). Log in with the default credentials (`airflow`/`airflow`).
+- **Airflow Webserver** accessible at [http://localhost:8080](http://localhost:8080).
 - **Weather PostgreSQL Database server** accessible on port `5432`
 
 **Airflow web UI**
 ![Airflow Web UI](images/Airflow_web.png)
 
 
-#### Shutting down services and Cleaning up
+#### 5. Running the Project
+
+- Once the Docker containers are running, access the Airflow web UI at: [http://localhost:8080](http://localhost:8080).
+
+- Log in with the default credentials (`airflow`/`airflow`). Add your list of cities under Admin > Variables.
+Example - key: CITIES, value: London, Ife, Lagos
+
+**Setting CITIES variable**
+![Setting CITIES variable](images/Airflow_variable.png)
+
+- Navigate to the DAGs section to trigger the `weather_etl_dag` manually or wait for it to run on schedule.
+
+**Airflow UI with Successful DAG Execution**
+  ![Airflow DAG Success](images/weather_etl_dag_hourly.png)
+
+
+#### 6. Querying the weather database
+To query the weather database created by the weather-db service:
+- Open a new terminal window and  run:
+ ```bash
+ docker compose exec -it weather-db bash
+ ```
+- Connect to weather database:
+```bash
+psql -U ${POSTGRES_USER} -d ${POSTGRES_DB}
+```
+- Run your queries
+```sql
+-- list all tables in database
+\dt
+
+-- list all rows in current_weather table
+SELECT * FROM current_weather;
+```
+-  Exit the psql shell:
+```
+\q
+exit
+```
+
+**Result for querying current_weather table**:
+  ![current_weather table](images/querying.png)
+
+
+#### 7. Shutting down services and Cleaning up
 To stop the services, run:
 
 ```bash
@@ -200,68 +244,14 @@ The core logic of the ETL process is managed by an **Airflow DAG** created by `d
 The DAG utilizes the `extract_weather_data`, `transform_weather_data`, and `load_weather_data` functions in the `dags/src/pipeline.py` script to perform the ETL process.
 
 ### DAG Workflow:
-1. Fetch current Tweather data from the OpenWeatherMap API.
-2. Transform the data (e.g., convert temperature from Kelvin to Celsius).
-3. Load the data into the PostgreSQL database.
+1. Fetch list of cities from Airflow variables
+2. Fetch weather data from the OpenWeatherMap API.
+3. Transform the data (e.g., convert temperature from Kelvin to Celsius).
+4. Load the data into the PostgreSQL database.
 
-### DAG Code
+### DAG Code: Excerpt from `weather_etl_dag.py`
 
 ```python
-from airflow import DAG
-from airflow.operators.python import PythonOperator
-from datetime import datetime, timedelta
-from airflow.models import TaskInstance
-import sys
-
-from dags.src.pipeline import extract_weather_data, transform_weather_data, load_weather_data
-
-import logging
-logger = logging.getLogger(__name__)
-
-sys.path.append("/dags")
-
-cities = ["London", "Lagos", "Paris", "Dubai"]
-
-def extract_data(ti: TaskInstance) -> None:
-    """Task to extract weather data from API"""
-    try:
-        data = extract_weather_data(cities)
-        ti.xcom_push(key="weather_data", value=data)
-        logger.info("Data fetched from API")
-    except Exception as e:
-        logger.error(f"Error in extract_data: {e}")
-        raise
-
-def transform_data(ti: TaskInstance) -> None:
-    """Task to transform weather data"""
-    try:
-        raw_data = ti.xcom_pull(task_ids="extract_weather_data", key="weather_data")
-        if not raw_data:
-            logger.error("No data found for transformation.")
-            raise ValueError("No data to transform.")
-        transformed_data = transform_weather_data(raw_data)
-        ti.xcom_push(key="transformed_data", value=transformed_data)
-        logger.info("Data transformed successfully")
-    except Exception as e:
-        response = ti.xcom_pull(task_ids="extract_weather_data")
-        logger.error(f"Error in transform_data: {e}, Response: {response}")
-        raise
-
-def load_data(ti: TaskInstance) -> None:
-    """Task to load weather data into the destination"""
-    try:
-        transformed_data = ti.xcom_pull(task_ids="transform_weather_data", key="transformed_data")
-        if not transformed_data:
-            logger.error("No transformed data found for loading.")
-            raise ValueError("No data to load.")
-        load_weather_data(transformed_data)
-        logger.info("Data loaded successfully")
-    except Exception as e:
-        response = ti.xcom_pull(task_ids="transform_weather_data")
-        logger.error(f"Error in load_data: {e}, Response: {response}")
-        raise
-
-
 default_args = {
     "owner": "airflow",
     "depends_on_past": False,
@@ -277,56 +267,36 @@ dag = DAG(
     default_args=default_args,
     description="Weather ETL DAG to fetch and load weather data, runs hourly",
     schedule=timedelta(hours=1),
-    catchup=False
+    catchup=False,
+)
+
+cities_task = PythonOperator(
+    task_id="get_cities",
+    python_callable=get_cities,
+    dag=dag,
 )
 
 extract_task = PythonOperator(
-    task_id="extract_weather_data", python_callable=extract_data, dag=dag)
+    task_id="extract_weather_data",
+    python_callable=extract_data,
+    dag=dag,
+)
 
 transform_task = PythonOperator(
-    task_id="transform_weather_data", python_callable=transform_data, dag=dag)
+    task_id="transform_weather_data",
+    python_callable=transform_data,
+    dag=dag,
+)
 
-load_task = PythonOperator(task_id="load_weather_data", python_callable=load_data, dag=dag)
+load_task = PythonOperator(
+    task_id="load_weather_data",
+    python_callable=load_data,
+    dag=dag,
+)
 
-extract_task >> transform_task >> load_task
+
+cities_task >> extract_task >> transform_task >> load_task
 ```
-
-
-## Running the Project
-
-Once the Docker containers are running, access the Airflow web UI at: [http://localhost:8080](http://localhost:8080). If the containers are not running, run them in detached mode using `docker compose up -d`.
-
-Log in with the default credentials (`airflow`/`airflow`), and navigate to the DAGs section to trigger the `weather_etl_dag` manually or wait for it to run on schedule.
-
-**Airflow UI with Successful DAG Execution**:
-  ![Airflow DAG Success](images/weather_etl_dag_hourly.png)
-
-### Querying the weather database
-To query the weather database created by the weather-db service:
-- Open a new terminal window and  run:
- ```bash
- docker exec -it weather-db bash
- ```
-- Connect to weather database:
-```bash
-psql -U <your_user> -d <your_db_name>
-```
-- Run your queries
-```sql
--- list all tables in database
-\dt
-
--- list all rows in current_weather table
-SELECT * FROM current_weather;
-```
--  Exit the psql shell:
-```
-\q
-exit
-```
-
-**Result for querying current_weather table**:
-  ![current_weather table](images/querying.png)
 
 
 ## Continuous Integration and Testing

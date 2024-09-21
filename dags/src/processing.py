@@ -125,6 +125,7 @@ def create_city_df(df: pd.DataFrame) -> pd.DataFrame:
                 "timezone_utc",
             ]
         ].copy()
+        city_df["id"] = df["country"] + "-" + df["name"]
         return city_df
     except KeyError as e:
         error_logger.error(f"KeyError: Missing key {e} in the DataFrame", exc_info=True)
@@ -143,7 +144,6 @@ def create_full_record_df(df: pd.DataFrame) -> pd.DataFrame:
     try:
         full_record_df = df[
             [
-                "name",
                 "description",
                 "temp_k",
                 "temp_c",
@@ -164,6 +164,9 @@ def create_full_record_df(df: pd.DataFrame) -> pd.DataFrame:
                 "timezone_utc",
             ]
         ].copy()
+        datetime_str = datetime.now().strftime("%Y%m%d%H%M%S")
+        full_record_df["city_name"] = df["name"]
+        full_record_df["id"] = df["country"] + "-" + df["name"] + "-" + datetime_str
         return full_record_df
     except KeyError as e:
         error_logger.error(f"KeyError: Missing key {e} in the DataFrame", exc_info=True)
@@ -183,7 +186,6 @@ def create_current_weather_df(df: pd.DataFrame) -> pd.DataFrame:
     try:
         current_weather_df = df[
             [
-                "name",
                 "description",
                 "temp_k",
                 "temp_c",
@@ -194,6 +196,9 @@ def create_current_weather_df(df: pd.DataFrame) -> pd.DataFrame:
                 "timezone_utc",
             ]
         ].copy()
+        datetime_str = datetime.now().strftime("%Y%m%d%H%M%S")
+        current_weather_df["city_name"] = df["name"]
+        current_weather_df["id"] = df["country"] + "-" + df["name"] + "-" + datetime_str
         return current_weather_df
     except KeyError as e:
         error_logger.error(f"KeyError: Missing key {e} in the DataFrame", exc_info=True)
