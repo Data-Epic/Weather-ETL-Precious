@@ -1,0 +1,53 @@
+name: Airflow Setup and Tests for Pre-merge Checks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    environment: test
+    env:
+      AIRFLOW_HOME: ${{ github.workspace }}/airflow_home
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/dags
+      DB_URL: "sqlite:///:memory:"
+      API_KEY: ${{ secrets.TEST_API_KEY }}
+      PYTHONPATH: ${{ github.workspace }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install apache-airflow
+
+    - name: Run pre-commit checks
+      run: |
+        pre-commit install
+        pre-commit run --all-files -v
+
+    - name: Run unit tests
+      run: |
+        pytest -s
+
+    - name: Run Airflow tests
+      run: |
+        mkdir -p $AIRFLOW_HOME/logs
+        airflow db init
+        airflow variables set CITIES "Dubai, London, Lagos"
+        airflow dags list
+        airflow dags test weather_etl_dag_hourly
