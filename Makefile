@@ -41,6 +41,8 @@ airflow-test: setup
 	mkdir -p $(AIRFLOW_HOME)/logs
 	airflow db init
 	echo "Running Airflow tests"
+	airflow variables set CITIES "Dubai, London, Lagos"
+	airflow variables get CITIES
 	airflow dags list
 	airflow dags test weather_etl_dag_hourly
 	@echo "Airflow tests passed"
